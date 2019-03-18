@@ -224,5 +224,18 @@
             </exclusion>
         </exclusions>
     </dependency>
+
+    <dependency>
+      <groupId>org.apache.orc</groupId>
+      <artifactId>orc-core</artifactId>
+      <version>1.4.3</version>
+      <exclusions>
+        <!-- Exclude ORC's Hadoop dependency. -->
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-common</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 </project>
