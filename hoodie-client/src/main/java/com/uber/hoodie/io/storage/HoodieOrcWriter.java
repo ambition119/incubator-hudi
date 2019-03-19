@@ -21,53 +21,51 @@ import com.uber.hoodie.common.model.HoodieRecord;
 import com.uber.hoodie.common.model.HoodieRecordPayload;
 import com.uber.hoodie.common.util.FSUtils;
 import com.uber.hoodie.common.util.HoodieAvroUtils;
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.ql.exec.vector.*;
-import org.apache.orc.OrcFile;
-import org.apache.orc.TypeDescription;
-import org.apache.orc.Writer;
+import org.apache.hadoop.hive.ql.io.orc.OrcFile;
+import org.apache.hadoop.hive.ql.io.orc.Writer;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.spark.TaskContext;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * HoodieOrcWriter
+ * HoodieOrcWriter use hive's Writer to help limit the size of underlying file. Provides
+ * a way to check if the current file can take more records with the <code>canWrite()</code>
  */
 public class HoodieOrcWriter<T extends HoodieRecordPayload, R extends IndexedRecord> implements HoodieStorageWriter<R> {
 
    private static AtomicLong recordIndex = new AtomicLong(1);
 
    private final Path file;
-   private final TypeDescription orcSchema;
    private final HoodieWrapperFileSystem fs;
    private final long maxFileSize;
    private final HoodieAvroWriteSupport writeSupport;
    private final String commitTime;
    private final Writer writer;
 
-   public HoodieOrcWriter(String commitTime, Path file, TypeDescription orcSchema, HoodieOrcConfig orcConfig) throws IOException {
+   public HoodieOrcWriter(String commitTime, Path file, HoodieOrcConfig orcConfig) throws IOException {
       this.file = HoodieWrapperFileSystem.convertToHoodiePath(file, orcConfig.getHadoopConf());
       this.fs = (HoodieWrapperFileSystem) this.file
             .getFileSystem(registerFileSystem(file, orcConfig.getHadoopConf()));
-      this.orcSchema = orcSchema;
       this.maxFileSize = orcConfig.getMaxFileSize() + Math
             .round(orcConfig.getMaxFileSize() * orcConfig.getCompressionRatio());
       this.writeSupport = orcConfig.getWriteSupport();
       this.commitTime = commitTime;
 
-      this.writer = OrcFile.createWriter(file,
-            OrcFile.writerOptions(registerFileSystem(file, orcConfig.getHadoopConf())).setSchema(orcSchema));
 
-//      this.writerImpl =  new WriterImpl(this.fs, this.file, null);
+      StructObjectInspector inspector =
+            (StructObjectInspector) ObjectInspectorFactory
+                  .getReflectionObjectInspector(IndexedRecord.class,
+                        ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+
+      this.writer = OrcFile.createWriter(file,
+            OrcFile.writerOptions(registerFileSystem(file, orcConfig.getHadoopConf())));
    }
 
    public static Configuration registerFileSystem(Path file, Configuration conf) {
@@ -86,88 +84,25 @@ public class HoodieOrcWriter<T extends HoodieRecordPayload, R extends IndexedRec
             record.getPartitionPath(), file.getName());
       HoodieAvroUtils.addCommitMetadataToRecord((GenericRecord) avroRecord, commitTime, seqId);
 
-      List<String> orcFieldNames = orcSchema.getFieldNames();
-      VectorizedRowBatch orcBatch = orcSchema.createRowBatch();
-      Map<String, ColumnVector> orcRow = new HashMap<String, ColumnVector>();
-      for (int i = 0; i < orcFieldNames.size(); i++) {
-         String fieldName = orcFieldNames.get(i);
-         TypeDescription.Category fieldType = orcSchema.getChildren().get(i).getCategory();
-         ColumnVector fieldNameColumnVector = getColumnVector(i, fieldType, orcBatch);
-         orcRow.put(fieldName, fieldNameColumnVector);
-      }
-
-      //TODO: Assign value to orc batch, the current implementation may be a bit issue
-      Schema avroRecordSchema = avroRecord.getSchema();
-      if (CollectionUtils.isEmpty(orcRow.keySet())) {
-         for (String fieldName: orcRow.keySet()) {
-            int row = orcBatch.size++;
-            Schema.Field field = avroRecordSchema.getField(fieldName);
-            Object fieldValue = avroRecord.get(field.pos());
-            if (null != fieldValue) {
-               ColumnVector columnVector = orcRow.get(fieldName);
-               if (columnVector instanceof BytesColumnVector) {
-                  ((BytesColumnVector) columnVector).vector[row] = String.valueOf(fieldValue).getBytes();
-                  continue;
-               }
-
-               if (columnVector instanceof LongColumnVector) {
-                  ((LongColumnVector) columnVector).vector[row] = Long.valueOf(String.valueOf(fieldValue));
-                  continue;
-               }
-
-               if (columnVector instanceof DoubleColumnVector) {
-                  ((DoubleColumnVector) columnVector).vector[row] = Double.valueOf(String.valueOf(fieldValue));
-               }
-            }
-
-            if (orcBatch.size == orcBatch.getMaxSize()) {
-               writer.addRowBatch(orcBatch);
-               orcBatch.reset();
-            }
-         }
-      }
-
+      this.writer.addRow(avroRecord);
       writeSupport.add(record.getRecordKey());
    }
 
    @Override
    public boolean canWrite() {
-      return false;
+      return fs.getBytesWritten(file) < maxFileSize;
+   }
+
+   @Override
+   public void writeAvro(String key, R object) throws IOException {
+      this.writer.addRow(object);
+      writeSupport.add(key);
    }
 
    @Override
    public void close() throws IOException {
-
-   }
-
-   @Override
-   public void writeAvro(String key, R oldRecord) throws IOException {
-
-   }
-
-   public ColumnVector getColumnVector(int pos, TypeDescription.Category fieldType, VectorizedRowBatch orcBatch){
-      switch(fieldType) {
-         case CHAR:
-         case VARCHAR:
-         case BINARY:
-         case STRING:
-            return (BytesColumnVector) orcBatch.cols[pos];
-//         case DECIMAL:
-//            return (DecimalColumnVector) orcBatch.cols[pos];
-         case BOOLEAN:
-         case BYTE:
-         case DATE:
-         case INT:
-         case LONG:
-         case SHORT:
-            return (LongColumnVector) orcBatch.cols[pos];
-         case DOUBLE:
-         case FLOAT:
-            return (DoubleColumnVector) orcBatch.cols[pos];
-//         case TIMESTAMP:
-//            return (TimestampColumnVector) orcBatch.cols[pos];
-         default:
-            throw new IllegalArgumentException("Unknown type " + fieldType);
+      if (null != this.writer) {
+         this.writer.close();
       }
    }
 }

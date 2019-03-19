@@ -69,5 +69,4 @@ public class HoodieOrcConfig {
    public double getCompressionRatio() {
       return compressionRatio;
    }
-
 }
