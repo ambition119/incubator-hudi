@@ -33,9 +33,13 @@ public class HoodieStorageWriterFactory {
   public static <T extends HoodieRecordPayload, R extends IndexedRecord> HoodieStorageWriter<R> getStorageWriter(
       String commitTime, Path path, HoodieTable<T> hoodieTable,
       HoodieWriteConfig config, Schema schema) throws IOException {
-    //TODO - based on the metadata choose the implementation of HoodieStorageWriter
-    // Currently only parquet is supported
     return newParquetStorageWriter(commitTime, path, config, schema, hoodieTable);
+  }
+
+  public static <T extends HoodieRecordPayload, R extends IndexedRecord> HoodieStorageWriter<R> getOrcStorageWriter(
+      String commitTime, Path path, HoodieTable<T> hoodieTable, HoodieWriteConfig config,
+      Schema schema, Class<IndexedRecord> clazz) throws IOException {
+    return newOrcStorageWriter(commitTime, path, config, schema, clazz, hoodieTable);
   }
 
   private static <T extends HoodieRecordPayload,
@@ -54,4 +58,23 @@ public class HoodieStorageWriterFactory {
 
     return new HoodieParquetWriter<>(commitTime, path, parquetConfig, schema);
   }
+
+
+  private static <T extends HoodieRecordPayload,
+      R extends IndexedRecord> HoodieStorageWriter<R> newOrcStorageWriter(String commitTime, Path path,
+      HoodieWriteConfig config, Schema schema, Class<IndexedRecord> clazz, HoodieTable hoodieTable) throws IOException {
+    BloomFilter filter = new BloomFilter(config.getBloomFilterNumEntries(),
+        config.getBloomFilterFPP());
+    HoodieAvroWriteSupport writeSupport = new HoodieAvroWriteSupport(
+        new AvroSchemaConverter().convert(schema), schema, filter);
+
+    HoodieOrcConfig orcConfig =
+        new HoodieOrcConfig(writeSupport, hoodieTable.getHadoopConf(),
+            config.getOrcCompressionKind(), config.getOrcBlockSize(),
+            config.getOrcStripeSize(), config.getOrcBufferSize(),
+            config.getOrcRowIndexStride());
+
+    return new HoodieOrcWriter<>(commitTime, path, orcConfig, clazz);
+  }
+
 }

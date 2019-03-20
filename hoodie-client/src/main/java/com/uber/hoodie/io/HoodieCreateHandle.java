@@ -67,8 +67,15 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieIOH
       HoodiePartitionMetadata partitionMetadata = new HoodiePartitionMetadata(fs, commitTime,
           new Path(config.getBasePath()), FSUtils.getPartitionPath(config.getBasePath(), partitionPath));
       partitionMetadata.trySave(TaskContext.getPartitionId());
-      this.storageWriter = HoodieStorageWriterFactory
-          .getStorageWriter(commitTime, getStorageWriterPath(), hoodieTable, config, schema);
+
+      String type = config.getFileType();
+      if (!type.equalsIgnoreCase("orc")) {
+        this.storageWriter = HoodieStorageWriterFactory
+            .getStorageWriter(commitTime, getStorageWriterPath(), hoodieTable, config, schema);
+      } else {
+        this.storageWriter = HoodieStorageWriterFactory
+            .getOrcStorageWriter(commitTime, getStorageWriterPath(), hoodieTable, config, schema, IndexedRecord.class);
+      }
     } catch (IOException e) {
       throw new HoodieInsertException(
           "Failed to initialize HoodieStorageWriter for path " + getStorageWriterPath(), e);

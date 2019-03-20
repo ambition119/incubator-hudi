@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.Properties;
 import javax.annotation.concurrent.Immutable;
+import org.apache.hadoop.hive.ql.io.orc.CompressionKind;
 import org.apache.spark.storage.StorageLevel;
 
 /**
@@ -71,6 +72,9 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
   private static final String CONSISTENCY_CHECK_ENABLED = "hoodie.consistency.check.enabled";
   private static final String DEFAULT_CONSISTENCY_CHECK_ENABLED = "false";
 
+  private static final String FILE_TYPE = "hoodie.file.type";
+  private static final String DEFAULT_FILE_TYPE = "parquet";
+
   private HoodieWriteConfig(Properties props) {
     super(props);
   }
@@ -92,6 +96,10 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
 
   public String getTableName() {
     return props.getProperty(TABLE_NAME);
+  }
+
+  public String getFileType() {
+    return props.getProperty(FILE_TYPE);
   }
 
   public Boolean shouldAutoCommit() {
@@ -359,6 +367,39 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
     return Double.valueOf(props.getProperty(HoodieStorageConfig.LOGFILE_TO_PARQUET_COMPRESSION_RATIO));
   }
 
+  // orc
+  public CompressionKind getOrcCompressionKind() {
+    String compressionName = props.getProperty(HoodieStorageConfig.ORC_COMPRESS);
+    switch (compressionName.toUpperCase()) {
+      case "NONE":
+        return CompressionKind.NONE;
+      case "ZLIB":
+        return CompressionKind.ZLIB;
+      case "SNAPPY":
+        return CompressionKind.SNAPPY;
+      case "LZO":
+        return CompressionKind.LZO;
+    }
+
+    return CompressionKind.ZLIB;
+  }
+
+  public int getOrcBlockSize() {
+    return Integer.valueOf(props.getProperty(HoodieStorageConfig.ORC_BLOCK_SIZE));
+  }
+
+  public long getOrcStripeSize() {
+    return Long.valueOf(props.getProperty(HoodieStorageConfig.ORC_STRIPE_SIZE));
+  }
+
+  public int getOrcBufferSize() {
+    return Integer.valueOf(props.getProperty(HoodieStorageConfig.ORC_BUFFER_SIZE));
+  }
+
+  public int getOrcRowIndexStride() {
+    return Integer.valueOf(props.getProperty(HoodieStorageConfig.ORC_ROW_INDEX_STRIPE_SIZE));
+  }
+
   /**
    * metrics properties
    **/
@@ -465,6 +506,11 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
       return this;
     }
 
+    public Builder forFileType(String fileType) {
+      props.setProperty(FILE_TYPE, fileType);
+      return this;
+    }
+
     public Builder withBulkInsertParallelism(int bulkInsertParallelism) {
       props.setProperty(BULKINSERT_PARALLELISM, String.valueOf(bulkInsertParallelism));
       return this;
@@ -566,6 +612,8 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
       HoodieWriteConfig config = new HoodieWriteConfig(props);
       // Check for mandatory properties
       Preconditions.checkArgument(config.getBasePath() != null);
+      setDefaultOnCondition(props, !props.containsKey(FILE_TYPE), FILE_TYPE,
+          DEFAULT_FILE_TYPE);
       setDefaultOnCondition(props, !props.containsKey(INSERT_PARALLELISM), INSERT_PARALLELISM,
           DEFAULT_PARALLELISM);
       setDefaultOnCondition(props, !props.containsKey(BULKINSERT_PARALLELISM),

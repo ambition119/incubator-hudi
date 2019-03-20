@@ -18,55 +18,55 @@ package com.uber.hoodie.io.storage;
 
 import com.uber.hoodie.avro.HoodieAvroWriteSupport;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.hadoop.hive.ql.io.orc.CompressionKind;
 
 public class HoodieOrcConfig {
-
    private HoodieAvroWriteSupport writeSupport;
-   private CompressionCodecName compressionCodecName;
    private int blockSize;
-   private int pageSize;
-   private long maxFileSize;
    private Configuration hadoopConf;
-   private double compressionRatio;
 
-   public HoodieOrcConfig(HoodieAvroWriteSupport writeSupport,
-                              CompressionCodecName compressionCodecName, int blockSize, int pageSize, long maxFileSize,
-                              Configuration hadoopConf, double compressionRatio) {
+   // OrcFile param
+   private long stripeSize;
+   private int bufferSize;
+   private int rowIndexStride;
+   private CompressionKind compressionKind;
+
+   public HoodieOrcConfig(HoodieAvroWriteSupport writeSupport, Configuration hadoopConf, CompressionKind compressionKind,
+                          int blockSize, long stripeSize, int bufferSize, int rowIndexStride) {
       this.writeSupport = writeSupport;
-      this.compressionCodecName = compressionCodecName;
       this.blockSize = blockSize;
-      this.pageSize = pageSize;
-      this.maxFileSize = maxFileSize;
       this.hadoopConf = hadoopConf;
-      this.compressionRatio = compressionRatio;
+      this.compressionKind = compressionKind;
+      this.stripeSize = stripeSize;
+      this.bufferSize = bufferSize;
+      this.rowIndexStride = rowIndexStride;
    }
 
    public HoodieAvroWriteSupport getWriteSupport() {
       return writeSupport;
    }
 
-   public CompressionCodecName getCompressionCodecName() {
-      return compressionCodecName;
-   }
-
    public int getBlockSize() {
       return blockSize;
-   }
-
-   public int getPageSize() {
-      return pageSize;
-   }
-
-   public long getMaxFileSize() {
-      return maxFileSize;
    }
 
    public Configuration getHadoopConf() {
       return hadoopConf;
    }
 
-   public double getCompressionRatio() {
-      return compressionRatio;
+   public long getStripeSize() {
+      return stripeSize;
+   }
+
+   public int getBufferSize() {
+      return bufferSize;
+   }
+
+   public int getRowIndexStride() {
+      return rowIndexStride;
+   }
+
+   public CompressionKind getCompressionKind() {
+      return compressionKind;
    }
 }

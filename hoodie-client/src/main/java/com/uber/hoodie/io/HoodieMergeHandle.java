@@ -124,8 +124,14 @@ public class HoodieMergeHandle<T extends HoodieRecordPayload> extends HoodieIOHa
       writeStatus.getStat().setFileId(fileId);
       writeStatus.getStat().setPaths(new Path(config.getBasePath()), newFilePath, tempPath);
       // Create the writer for writing the new version file
-      storageWriter = HoodieStorageWriterFactory
-          .getStorageWriter(commitTime, getStorageWriterPath(), hoodieTable, config, schema);
+      String type = config.getFileType();
+      if (!type.equalsIgnoreCase("orc")) {
+        this.storageWriter = HoodieStorageWriterFactory
+            .getStorageWriter(commitTime, getStorageWriterPath(), hoodieTable, config, schema);
+      } else {
+        this.storageWriter = HoodieStorageWriterFactory
+            .getOrcStorageWriter(commitTime, getStorageWriterPath(), hoodieTable, config, schema, IndexedRecord.class);
+      }
     } catch (IOException io) {
       logger.error("Error in update task at commit " + commitTime, io);
       writeStatus.setGlobalError(io);

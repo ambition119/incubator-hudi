@@ -44,28 +44,32 @@ public class HoodieOrcWriter<T extends HoodieRecordPayload, R extends IndexedRec
 
    private final Path file;
    private final HoodieWrapperFileSystem fs;
-   private final long maxFileSize;
+   private final long stripeSize;
    private final HoodieAvroWriteSupport writeSupport;
    private final String commitTime;
    private final Writer writer;
 
-   public HoodieOrcWriter(String commitTime, Path file, HoodieOrcConfig orcConfig) throws IOException {
+   public HoodieOrcWriter(String commitTime, Path file, HoodieOrcConfig orcConfig, Class<IndexedRecord> clazz) throws IOException {
       this.file = HoodieWrapperFileSystem.convertToHoodiePath(file, orcConfig.getHadoopConf());
-      this.fs = (HoodieWrapperFileSystem) this.file
-            .getFileSystem(registerFileSystem(file, orcConfig.getHadoopConf()));
-      this.maxFileSize = orcConfig.getMaxFileSize() + Math
-            .round(orcConfig.getMaxFileSize() * orcConfig.getCompressionRatio());
+      this.fs = (HoodieWrapperFileSystem) this.file.getFileSystem(registerFileSystem(file, orcConfig.getHadoopConf()));
       this.writeSupport = orcConfig.getWriteSupport();
       this.commitTime = commitTime;
 
-
+      this.stripeSize = orcConfig.getStripeSize();
       StructObjectInspector inspector =
             (StructObjectInspector) ObjectInspectorFactory
-                  .getReflectionObjectInspector(IndexedRecord.class,
+                  .getReflectionObjectInspector(clazz,
                         ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-
-      this.writer = OrcFile.createWriter(file,
-            OrcFile.writerOptions(registerFileSystem(file, orcConfig.getHadoopConf())));
+      this.writer = OrcFile.createWriter(
+            this.fs,
+            this.file,
+            registerFileSystem(file, orcConfig.getHadoopConf()),
+            inspector,
+            orcConfig.getStripeSize(),
+            orcConfig.getCompressionKind(),
+            orcConfig.getBufferSize(),
+            orcConfig.getRowIndexStride()
+      );
    }
 
    public static Configuration registerFileSystem(Path file, Configuration conf) {
@@ -90,7 +94,7 @@ public class HoodieOrcWriter<T extends HoodieRecordPayload, R extends IndexedRec
 
    @Override
    public boolean canWrite() {
-      return fs.getBytesWritten(file) < maxFileSize;
+      return fs.getBytesWritten(file) < stripeSize;
    }
 
    @Override
