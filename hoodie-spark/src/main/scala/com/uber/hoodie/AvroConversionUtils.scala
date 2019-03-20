@@ -43,28 +43,26 @@ object AvroConversionUtils {
     val encoder = RowEncoder.apply(dataType).resolveAndBind()
     df.queryExecution.toRdd.map(encoder.fromRow)
       .mapPartitions { records =>
-      if (records.isEmpty) Iterator.empty
-      else {
-        val convertor = createConverterToAvro(dataType, structName, recordNamespace)
-        records.map { x => convertor(x).asInstanceOf[GenericRecord] }
+        if (records.isEmpty) Iterator.empty
+        else {
+          val convertor = createConverterToAvro(dataType, structName, recordNamespace)
+          records.map { x => convertor(x).asInstanceOf[GenericRecord] }
+        }
       }
-    }
   }
 
   def createDataFrame(rdd: RDD[GenericRecord], schemaStr: String, ss : SparkSession): Dataset[Row] = {
     if (rdd.isEmpty()) {
       ss.emptyDataFrame
-    } else {
-      ss.createDataFrame(rdd.mapPartitions { records =>
-        if (records.isEmpty) Iterator.empty
-        else {
-          val schema = Schema.parse(schemaStr)
-          val dataType = convertAvroSchemaToStructType(schema)
-          val convertor = createConverterToRow(schema, dataType)
-          records.map { x => convertor(x).asInstanceOf[Row] }
-        }
-      }, convertAvroSchemaToStructType(Schema.parse(schemaStr))).asInstanceOf[Dataset[Row]]
-    }
+    } else ss.createDataFrame(rdd.mapPartitions { records =>
+      if (records.isEmpty) Iterator.empty
+      else {
+        val schema = new Schema.Parser().parse(schemaStr)
+        val dataType = convertAvroSchemaToStructType(schema)
+        val convertor = createConverterToRow(schema, dataType)
+        records.map { x => convertor(x).asInstanceOf[Row] }
+      }
+    }, convertAvroSchemaToStructType(new Schema.Parser().parse(schemaStr))).asInstanceOf[Dataset[Row]]
   }
 
   def getNewRecordNamespace(elementDataType: DataType,
