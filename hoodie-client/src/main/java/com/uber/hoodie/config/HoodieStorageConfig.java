@@ -122,27 +122,27 @@ public class HoodieStorageConfig extends DefaultHoodieConfig {
       return this;
     }
 
-    public Builder getOrcCompressionKind(String compressionName){
+    public Builder getOrcCompressionKind(String compressionName) {
       props.setProperty(ORC_COMPRESS, compressionName);
       return this;
     }
 
-    public Builder getOrcBlockSize(long blockSize){
+    public Builder getOrcBlockSize(long blockSize) {
       props.setProperty(ORC_BLOCK_SIZE, String.valueOf(blockSize));
       return this;
     }
 
-    public Builder getOrcStripeSize(long stripeSize){
+    public Builder getOrcStripeSize(long stripeSize) {
       props.setProperty(ORC_STRIPE_SIZE, String.valueOf(stripeSize));
       return this;
     }
 
-    public Builder getOrcBufferSize(long bufferSize){
+    public Builder getOrcBufferSize(long bufferSize) {
       props.setProperty(ORC_BUFFER_SIZE, String.valueOf(bufferSize));
       return this;
     }
 
-    public Builder getOrcRowIndexStride(long rowIndexStride){
+    public Builder getOrcRowIndexStride(long rowIndexStride) {
       props.setProperty(ORC_ROW_INDEX_STRIPE_SIZE, String.valueOf(rowIndexStride));
       return this;
     }

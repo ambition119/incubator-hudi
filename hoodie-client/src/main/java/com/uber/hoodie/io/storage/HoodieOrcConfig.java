@@ -21,52 +21,51 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.io.orc.CompressionKind;
 
 public class HoodieOrcConfig {
-   private HoodieAvroWriteSupport writeSupport;
-   private int blockSize;
-   private Configuration hadoopConf;
+  private HoodieAvroWriteSupport writeSupport;
+  private int blockSize;
+  private Configuration hadoopConf;
+  // OrcFile param
+  private long stripeSize;
+  private int bufferSize;
+  private int rowIndexStride;
+  private CompressionKind compressionKind;
 
-   // OrcFile param
-   private long stripeSize;
-   private int bufferSize;
-   private int rowIndexStride;
-   private CompressionKind compressionKind;
+  public HoodieOrcConfig(HoodieAvroWriteSupport writeSupport, Configuration hadoopConf, CompressionKind compressionKind,
+      int blockSize, long stripeSize, int bufferSize, int rowIndexStride) {
+    this.writeSupport = writeSupport;
+    this.blockSize = blockSize;
+    this.hadoopConf = hadoopConf;
+    this.compressionKind = compressionKind;
+    this.stripeSize = stripeSize;
+    this.bufferSize = bufferSize;
+    this.rowIndexStride = rowIndexStride;
+  }
 
-   public HoodieOrcConfig(HoodieAvroWriteSupport writeSupport, Configuration hadoopConf, CompressionKind compressionKind,
-                          int blockSize, long stripeSize, int bufferSize, int rowIndexStride) {
-      this.writeSupport = writeSupport;
-      this.blockSize = blockSize;
-      this.hadoopConf = hadoopConf;
-      this.compressionKind = compressionKind;
-      this.stripeSize = stripeSize;
-      this.bufferSize = bufferSize;
-      this.rowIndexStride = rowIndexStride;
-   }
+  public HoodieAvroWriteSupport getWriteSupport() {
+    return writeSupport;
+  }
 
-   public HoodieAvroWriteSupport getWriteSupport() {
-      return writeSupport;
-   }
+  public int getBlockSize() {
+    return blockSize;
+  }
 
-   public int getBlockSize() {
-      return blockSize;
-   }
+  public Configuration getHadoopConf() {
+    return hadoopConf;
+  }
 
-   public Configuration getHadoopConf() {
-      return hadoopConf;
-   }
+  public long getStripeSize() {
+    return stripeSize;
+  }
 
-   public long getStripeSize() {
-      return stripeSize;
-   }
+  public int getBufferSize() {
+    return bufferSize;
+  }
 
-   public int getBufferSize() {
-      return bufferSize;
-   }
+  public int getRowIndexStride() {
+    return rowIndexStride;
+  }
 
-   public int getRowIndexStride() {
-      return rowIndexStride;
-   }
-
-   public CompressionKind getCompressionKind() {
-      return compressionKind;
-   }
+  public CompressionKind getCompressionKind() {
+    return compressionKind;
+  }
 }

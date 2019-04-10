@@ -123,8 +123,8 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
   }
 
   public int getWriteBufferLimitBytes() {
-    return Integer
-        .parseInt(props.getProperty(WRITE_BUFFER_LIMIT_BYTES, DEFAULT_WRITE_BUFFER_LIMIT_BYTES));
+    return Integer.parseInt(props.getProperty(WRITE_BUFFER_LIMIT_BYTES,
+        DEFAULT_WRITE_BUFFER_LIMIT_BYTES));
   }
 
   public boolean shouldCombineBeforeInsert() {
@@ -373,15 +373,14 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
     switch (compressionName.toUpperCase()) {
       case "NONE":
         return CompressionKind.NONE;
-      case "ZLIB":
-        return CompressionKind.ZLIB;
       case "SNAPPY":
         return CompressionKind.SNAPPY;
       case "LZO":
         return CompressionKind.LZO;
+      case "ZLIB":
+      default:
+        return CompressionKind.ZLIB;
     }
-
-    return CompressionKind.ZLIB;
   }
 
   public int getOrcBlockSize() {
