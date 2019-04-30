@@ -22,6 +22,8 @@ import com.beust.jcommander.JCommander;
 import com.uber.hoodie.common.util.FSUtils;
 import com.uber.hoodie.exception.InvalidDatasetException;
 import com.uber.hoodie.hadoop.HoodieInputFormat;
+import com.uber.hoodie.hadoop.HoodieOrcInputFormat;
+import com.uber.hoodie.hadoop.realtime.HoodieOrcRealtimeInputFormat;
 import com.uber.hoodie.hadoop.realtime.HoodieRealtimeInputFormat;
 import com.uber.hoodie.hive.HoodieHiveClient.PartitionEvent;
 import com.uber.hoodie.hive.HoodieHiveClient.PartitionEvent.PartitionEventType;
@@ -34,6 +36,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.Partition;
+import org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat;
+import org.apache.hadoop.hive.ql.io.orc.OrcSerde;
 import org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat;
 import org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe;
 import org.slf4j.Logger;
@@ -57,10 +61,18 @@ public class HiveSyncTool {
   public static final String SUFFIX_REALTIME_TABLE = "_rt";
   private final HiveSyncConfig cfg;
 
+  private final boolean isOrcFile;
+
   public HiveSyncTool(HiveSyncConfig cfg, HiveConf configuration, FileSystem fs) {
+    this(cfg, configuration, fs, false);
+  }
+
+  public HiveSyncTool(HiveSyncConfig cfg, HiveConf configuration, FileSystem fs, boolean isOrcFile) {
     this.hoodieHiveClient = new HoodieHiveClient(cfg, configuration, fs);
     this.cfg = cfg;
+    this.isOrcFile = isOrcFile;
   }
+
 
   public void syncHoodieTable() {
     switch (hoodieHiveClient.getTableType()) {
@@ -126,14 +138,26 @@ public class HiveSyncTool {
       if (!isRealTime) {
         // TODO - RO Table for MOR only after major compaction (UnboundedCompaction is default
         // for now)
-        hoodieHiveClient.createTable(schema, HoodieInputFormat.class.getName(),
-            MapredParquetOutputFormat.class.getName(), ParquetHiveSerDe.class.getName());
+        if (!isOrcFile) {
+          hoodieHiveClient.createTable(schema, HoodieInputFormat.class.getName(),
+              MapredParquetOutputFormat.class.getName(), ParquetHiveSerDe.class.getName());
+        } else {
+          hoodieHiveClient.createTable(schema, HoodieOrcInputFormat.class.getName(),
+              OrcOutputFormat.class.getName(), OrcSerde.class.getName());
+        }
+
       } else {
         // Custom serde will not work with ALTER TABLE REPLACE COLUMNS
         // https://github.com/apache/hive/blob/release-1.1.0/ql/src/java/org/apache/hadoop/hive
         // /ql/exec/DDLTask.java#L3488
-        hoodieHiveClient.createTable(schema, HoodieRealtimeInputFormat.class.getName(),
-            MapredParquetOutputFormat.class.getName(), ParquetHiveSerDe.class.getName());
+        if (!isOrcFile) {
+          hoodieHiveClient.createTable(schema, HoodieRealtimeInputFormat.class.getName(),
+              MapredParquetOutputFormat.class.getName(), ParquetHiveSerDe.class.getName());
+        } else {
+          hoodieHiveClient.createTable(schema, HoodieOrcRealtimeInputFormat.class.getName(),
+              OrcOutputFormat.class.getName(), OrcSerde.class.getName());
+        }
+
       }
     } else {
       // Check if the dataset schema has evolved

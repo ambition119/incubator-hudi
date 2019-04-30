@@ -112,8 +112,9 @@ public class HoodieTestUtils {
 
   public static final void createCommitFiles(String basePath, String... commitTimes) throws IOException {
     for (String commitTime : commitTimes) {
-      new File(
-          basePath + "/" + HoodieTableMetaClient.METAFOLDER_NAME + "/" + HoodieTimeline.makeCommitFileName(commitTime))
+      boolean newFile = new File(
+          basePath + "/" + HoodieTableMetaClient.METAFOLDER_NAME + "/" + HoodieTimeline
+              .makeCommitFileName(commitTime))
           .createNewFile();
     }
   }

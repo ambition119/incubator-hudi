@@ -49,6 +49,21 @@ public class InputFormatTestUtil {
     return partitionPath;
   }
 
+  public static File prepareOrcDataset(TemporaryFolder basePath, int numberOfFiles,
+      String commitNumber) throws IOException {
+    basePath.create();
+    HoodieTestUtils.init(HoodieTestUtils.getDefaultHadoopConf(), basePath.getRoot().toString());
+    File partitionPath = basePath.newFolder("2016", "05", "01");
+    for (int i = 0; i < numberOfFiles; i++) {
+      File dataFile = new File(partitionPath,
+          FSUtils.makeOrcDataFileName(commitNumber, 1, "fileid" + i));
+      dataFile.createNewFile();
+    }
+    return partitionPath;
+  }
+
+
+
   public static void simulateUpdates(File directory, final String originalCommit,
       int numberOfFilesUpdated, String newCommit, boolean randomize) throws IOException {
     List<File> dataFiles = Arrays.asList(directory.listFiles(new FilenameFilter() {

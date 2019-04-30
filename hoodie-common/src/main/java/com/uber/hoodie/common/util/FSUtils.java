@@ -96,6 +96,11 @@ public class FSUtils {
     return String.format("%s_%d_%s.parquet", fileId, taskPartitionId, commitTime);
   }
 
+  public static String makeOrcDataFileName(String commitTime, int taskPartitionId, String fileId) {
+    return String.format("%s_%d_%s.orc", fileId, taskPartitionId, commitTime);
+  }
+
+
   public static String makeTempDataFileName(String partitionPath, String commitTime,
       int taskPartitionId, String fileId, int stageId, long taskAttemptId) {
     return String.format("%s_%s_%d_%s_%d_%d.parquet", partitionPath.replace("/", "-"), fileId,

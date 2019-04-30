@@ -29,8 +29,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.io.orc.OrcFile;
 import org.apache.hadoop.hive.ql.io.orc.Writer;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
-import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.spark.TaskContext;
 
 /**
@@ -56,9 +56,10 @@ public class HoodieOrcWriter<T extends HoodieRecordPayload, R extends IndexedRec
     this.commitTime = commitTime;
     this.stripeSize = orcConfig.getStripeSize();
 
-    StructObjectInspector inspector =
-        (StructObjectInspector) ObjectInspectorFactory.getReflectionObjectInspector(clazz,
+    ObjectInspector inspector = ObjectInspectorFactory
+        .getReflectionObjectInspector(clazz,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+
     this.writer = OrcFile.createWriter(
         this.fs,
         this.file,
